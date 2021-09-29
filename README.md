@@ -1,2 +1,2 @@
 # waddle
-Server application for a simple chat app
+Server application for a simple chat app written in Go.
