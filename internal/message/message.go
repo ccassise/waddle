@@ -5,7 +5,7 @@ import (
 )
 
 // Message represents all of the necessary information in order to carry out a
-// given command.
+// command.
 type Message struct {
 	Command  int
 	Receiver string
@@ -13,7 +13,7 @@ type Message struct {
 }
 
 // TODO: Add HELP command?
-// List of valid commands.
+// List of commands.
 const (
 	Login = iota + 1
 	Join
@@ -28,7 +28,7 @@ func (t *Message) Equal(rhs *Message) bool {
 }
 
 func (t Message) String() string {
-	return fmt.Sprintf("{ %v %q %q }", StringifyCommand(t.Command), t.Receiver, t.Data)
+	return fmt.Sprintf("{ %v %#q %#q }", StringifyCommand(t.Command), t.Receiver, t.Data)
 }
 
 // Returns the string version of a given command. Used for testing/debugging.

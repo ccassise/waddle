@@ -11,11 +11,12 @@ import (
 )
 
 // Parse will parse the given string and return its representation.
-func Parse(line string) (message.Message, error) {
+func Parse(b []byte) (message.Message, error) {
 	p := parser{
 		msg: message.Message{},
-		buf: bytes.NewBufferString(line),
+		buf: bytes.NewBuffer(b),
 	}
+
 	ch, err := p.buf.ReadByte()
 	if err != nil {
 		return message.Message{}, err
@@ -23,22 +24,20 @@ func Parse(line string) (message.Message, error) {
 
 	switch ch {
 	case 'L':
-		err = p.buf.UnreadByte()
-		if err != nil {
-			return message.Message{}, err
-		}
-
+		p.buf.UnreadByte()
 		err = p.parseOneArgCmd(message.Login, p.parseWord)
 		if err != nil {
 			return message.Message{}, err
 		}
 	case 'J':
-		err = p.buf.UnreadByte()
+		p.buf.UnreadByte()
+		err = p.parseOneArgCmd(message.Join, p.parseRoom)
 		if err != nil {
 			return message.Message{}, err
 		}
-
-		err = p.parseOneArgCmd(message.Join, p.parseRoom)
+	case 'M':
+		p.buf.UnreadByte()
+		err = p.parseMessage()
 		if err != nil {
 			return message.Message{}, err
 		}
@@ -79,11 +78,6 @@ func (p *parser) parseKeyword(keyword string) error {
 
 	if !unicode.IsSpace(rune(ch)) {
 		return errors.New(errInvalidCommand)
-	}
-
-	err = p.buf.UnreadByte()
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -150,6 +144,7 @@ func (p *parser) parseRoom() (string, error) {
 	if err != nil {
 		return "", err
 	} else if ch != '#' {
+		p.buf.UnreadByte()
 		return "", errors.New(errChatroom)
 	}
 
@@ -166,6 +161,29 @@ func (p *parser) parseRoom() (string, error) {
 	_, err = result.WriteString(word)
 	if err != nil {
 		return "", err
+	}
+
+	return result.String(), nil
+}
+
+// parseMsgText reads all bytes until a carriage return or line feed is found.
+func (p *parser) parseMsgText() (string, error) {
+	var result strings.Builder
+
+	for {
+		ch, err := p.buf.ReadByte()
+		if err != nil {
+			return "", err
+		}
+
+		if ch == '\r' || ch == '\n' {
+			break
+		}
+
+		err = result.WriteByte(ch)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return result.String(), nil
@@ -189,7 +207,7 @@ func (p *parser) parseRoom() (string, error) {
 
 // parseOneArgCmd parses a <command> <argument> . The second function argument
 // is a function that determines what strategy to use to parse the argument.
-// E.G. #<chatroom> is parse different than <username> .
+// E.G. #<chatroom> is parsed different than <username> .
 func (p *parser) parseOneArgCmd(cmd int, parseArg func() (string, error)) error {
 	err := p.parseKeyword(message.StringifyCommand(cmd))
 	if err != nil {
@@ -203,12 +221,49 @@ func (p *parser) parseOneArgCmd(cmd int, parseArg func() (string, error)) error 
 		return err
 	}
 
-	word, err := parseArg()
+	p.msg.Data, err = parseArg()
 	if err != nil {
 		return err
 	}
 
-	p.msg.Data = word
+	err = p.parseSpace()
+	if err != io.EOF {
+		return errors.New(errInvalidArgs)
+	}
+
+	return nil
+}
+
+func (p *parser) parseMessage() error {
+	err := p.parseKeyword(message.StringifyCommand(message.Msg))
+	if err != nil {
+		return err
+	}
+
+	p.msg.Command = message.Msg
+
+	err = p.parseSpace()
+	if err != nil {
+		return err
+	}
+
+	p.msg.Receiver, err = p.parseRoom()
+	if err != nil {
+		p.msg.Receiver, err = p.parseWord()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = p.parseSpace()
+	if err != nil {
+		return err
+	}
+
+	p.msg.Data, err = p.parseMsgText()
+	if err != nil {
+		return err
+	}
 
 	err = p.parseSpace()
 	if err != io.EOF {
