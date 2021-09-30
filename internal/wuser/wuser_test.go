@@ -1,18 +1,13 @@
 package wuser
 
-import "testing"
+import (
+	"testing"
 
-type MockWriter struct {
-	Wrote []byte
-}
-
-func (w *MockWriter) Write(b []byte) (int, error) {
-	w.Wrote = append(w.Wrote, b...)
-	return len(b), nil
-}
+	"github.com/ccassise/waddle/test/mock"
+)
 
 func TestOk(t *testing.T) {
-	m := MockWriter{make([]byte, 0)}
+	m := mock.MockWriter{Wrote: make([]byte, 0)}
 	u := User{
 		Writer: &m,
 	}
@@ -26,7 +21,7 @@ func TestOk(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	m := MockWriter{make([]byte, 0)}
+	m := mock.MockWriter{Wrote: make([]byte, 0)}
 	u := User{
 		Writer: &m,
 	}

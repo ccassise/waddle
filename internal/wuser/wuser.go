@@ -1,7 +1,7 @@
 package wuser
 
 import (
-	"fmt"
+	"bytes"
 	"io"
 )
 
@@ -20,8 +20,11 @@ func (u *User) Ok() error {
 
 // Writes ERROR and reason to user. Returns writer error.
 func (u *User) Error(s string) error {
-	_, err := u.Writer.Write([]byte(fmt.Sprintf("ERROR %v\r\n", s)))
+	var buf bytes.Buffer
+	buf.WriteString("ERROR ")
+	buf.WriteString(s)
+	buf.WriteString("\r\n")
+
+	_, err := u.Writer.Write(buf.Bytes())
 	return err
 }
-
-// user.Msg(msg Message)

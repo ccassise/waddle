@@ -48,8 +48,8 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 
 	conn.Write([]byte("HELLO\r\n"))
 
-	const maxMsgLen = 1024
-	bytesRecv := make([]byte, maxMsgLen)
+	const maxBytes = 1024
+	bytesRecv := make([]byte, maxBytes)
 	for {
 		n, err := conn.Read(bytesRecv)
 		if err != nil {
@@ -57,7 +57,7 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 			return
 		}
 
-		msg, err := parser.Parse(string(bytesRecv[:n]))
+		msg, err := parser.Parse(bytesRecv[:n])
 		if err != nil {
 			log.Printf("%v[%q] ERROR %q\n", user.Id, user.Name, err.Error())
 			user.Error(err.Error())
@@ -66,6 +66,7 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 
 		log.Printf("%v[%q] %v %q %q\n", user.Id, user.Name, message.StringifyCommand(msg.Command), msg.Receiver, msg.Data)
 		if err = execute(ctx, &user, &msg); err != nil {
+			log.Printf("%v[%q] ERROR %q\n", user.Id, user.Name, err.Error())
 			user.Error(err.Error())
 			continue
 		}
@@ -74,28 +75,14 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 	}
 }
 
-func execute(ctx *context.Context, user *wuser.User, msg *message.Message) error {
-	switch msg.Command {
+func execute(ctx *context.Context, u *wuser.User, m *message.Message) error {
+	switch m.Command {
 	case message.Login:
-		return executeLogin(ctx, user, msg)
+		return ctx.Login(u, m)
 	case message.Join:
-		if !user.LoggedIn {
-			return errors.New("unauthorized")
-		}
-		ctx.Join(msg.Data, user)
-		return nil
+		return ctx.Join(u, m)
+	case message.Msg:
+		return ctx.Broadcast(u, m)
 	}
 	return errors.New("internal error")
-}
-
-func executeLogin(ctx *context.Context, user *wuser.User, msg *message.Message) error {
-	if err := ctx.Login(user); err != nil {
-		log.Printf("%v[%q] login fail\n", user.Id, user.Name)
-		return err
-	}
-
-	user.Name = msg.Data
-	log.Printf("%v[%q] login successful\n", user.Id, user.Name)
-
-	return nil
 }
