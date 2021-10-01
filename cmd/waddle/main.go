@@ -81,6 +81,8 @@ func execute(ctx *context.Context, u *wuser.User, m *message.Message) error {
 		return ctx.Login(u, m)
 	case message.Join:
 		return ctx.Join(u, m)
+	case message.Part:
+		return ctx.Part(u, m)
 	case message.Msg:
 		return ctx.Broadcast(u, m)
 	}

@@ -179,3 +179,20 @@ func TestBroadcast(t *testing.T) {
 		}
 	})
 }
+
+func TestPart(t *testing.T) {
+	t.Run("should not receive a chatroom message after parting", func(t *testing.T) {
+		ctx := New()
+		aliceWriter := mock.MockWriter{}
+		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
+
+		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
+		ctx.Join(&alice, &message.Message{Command: message.Join, Data: "#test"})
+		ctx.Part(&alice, &message.Message{Command: message.Part, Data: "#test"})
+		ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "#test", Data: "hello, test!"})
+
+		if string(aliceWriter.Wrote) != "" {
+			t.Fatalf("got %#q, want %#q", string(aliceWriter.Wrote), "")
+		}
+	})
+}
