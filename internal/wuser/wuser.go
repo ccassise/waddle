@@ -10,6 +10,7 @@ type User struct {
 	Name     string
 	LoggedIn bool
 	Writer   io.Writer
+	Rooms    []string
 }
 
 // Writes OK to user. Return writer error.

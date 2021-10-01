@@ -45,6 +45,7 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 		Id:     conn.RemoteAddr().String(),
 		Writer: conn,
 	}
+	defer ctx.Logout(&user)
 
 	conn.Write([]byte("HELLO\r\n"))
 
@@ -72,6 +73,10 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 		}
 
 		user.Ok()
+
+		if msg.Command == message.Logout {
+			break
+		}
 	}
 }
 
@@ -79,6 +84,8 @@ func execute(ctx *context.Context, u *wuser.User, m *message.Message) error {
 	switch m.Command {
 	case message.Login:
 		return ctx.Login(u, m)
+	case message.Logout:
+		return ctx.Logout(u)
 	case message.Join:
 		return ctx.Join(u, m)
 	case message.Part:

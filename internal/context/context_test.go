@@ -52,6 +52,53 @@ func TestLogin(t *testing.T) {
 	})
 }
 
+func TestLogout(t *testing.T) {
+	t.Run("should logout", func(t *testing.T) {
+		ctx := New()
+		user := wuser.User{Id: "alice_unique"}
+
+		ctx.Login(&user, &message.Message{Data: "alice"})
+		err := ctx.Logout(&user)
+
+		if err != nil || user.LoggedIn {
+			t.Fatalf("Logout(%v) = (%v %v), want (%v, true)", user, err, user.LoggedIn, nil)
+		}
+	})
+
+	t.Run("should be able to login again and reuse name", func(t *testing.T) {
+		ctx := New()
+		alice := wuser.User{Id: "alice_unique"}
+		newAlice := wuser.User{Id: "new_alice_unique"}
+
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Logout(&alice)
+		err := ctx.Login(&newAlice, &message.Message{Data: "alice"})
+
+		if err != nil || !newAlice.LoggedIn || newAlice.Name != "alice" {
+			t.Fatalf("Login(%v) = (%v %v), want (%v, true)", alice, err, alice.LoggedIn, nil)
+		}
+	})
+
+	t.Run("should be removed from chatrooms on logout", func(t *testing.T) {
+		ctx := New()
+		aliceWriter := mock.MockWriter{Wrote: make([]byte, 0)}
+		bobWriter := mock.MockWriter{Wrote: make([]byte, 0)}
+		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
+		bob := wuser.User{Id: "bob_unique", Writer: &bobWriter}
+
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Login(&bob, &message.Message{Data: "bob"})
+		ctx.Join(&alice, &message.Message{Data: "#room"})
+		ctx.Join(&bob, &message.Message{Data: "#room"})
+		ctx.Logout(&bob)
+		err := ctx.Broadcast(&alice, &message.Message{Receiver: "#room", Data: "hello, room!"})
+
+		if err != nil || string(bobWriter.Wrote) != "" {
+			t.Fatalf("Broadcast() = %v, want %v; sent %#q, want %#q", err, nil, string(bobWriter.Wrote), "")
+		}
+	})
+}
+
 func TestJoin(t *testing.T) {
 	t.Run("should fail when not logged in", func(t *testing.T) {
 		ctx := New()
@@ -71,9 +118,9 @@ func TestBroadcast(t *testing.T) {
 		m := mock.MockWriter{Wrote: make([]byte, 0)}
 		u := wuser.User{Id: "alice_unique", Writer: &m}
 
-		ctx.Login(&u, &message.Message{Command: message.Login, Data: "alice"})
+		ctx.Login(&u, &message.Message{Data: "alice"})
 		ctx.Join(&u, &message.Message{Data: "#room"})
-		err := ctx.Broadcast(&u, &message.Message{Command: message.Msg, Receiver: "#room", Data: "hello, room!"})
+		err := ctx.Broadcast(&u, &message.Message{Receiver: "#room", Data: "hello, room!"})
 
 		expect := "GOTROOMMSG alice #room hello, room!\r\n"
 		if err != nil || string(m.Wrote) != expect {
@@ -83,15 +130,13 @@ func TestBroadcast(t *testing.T) {
 
 	t.Run("should receive message when sent to user", func(t *testing.T) {
 		ctx := New()
-		aliceWriter := mock.MockWriter{Wrote: make([]byte, 0)}
 		bobWriter := mock.MockWriter{Wrote: make([]byte, 0)}
-		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
+		alice := wuser.User{Id: "alice_unique"}
 		bob := wuser.User{Id: "bob_unique", Writer: &bobWriter}
 
-		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
-		ctx.Login(&bob, &message.Message{Command: message.Login, Data: "bob"})
-
-		err := ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "bob", Data: "hello, bob!"})
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Login(&bob, &message.Message{Data: "bob"})
+		err := ctx.Broadcast(&alice, &message.Message{Receiver: "bob", Data: "hello, bob!"})
 
 		expect := "GOTUSERMSG alice hello, bob!\r\n"
 		if err != nil || string(bobWriter.Wrote) != expect {
@@ -104,7 +149,7 @@ func TestBroadcast(t *testing.T) {
 		m := mock.MockWriter{Wrote: make([]byte, 0)}
 		u := wuser.User{Id: "alice_unique", Writer: &m}
 
-		err := ctx.Broadcast(&u, &message.Message{Command: message.Msg, Receiver: "#room", Data: "hello, room!"})
+		err := ctx.Broadcast(&u, &message.Message{Receiver: "#room", Data: "hello, room!"})
 
 		if err == nil {
 			t.Fatalf("Broadcast() = %v, want %v; sent %#q, want %#q", err, nil, string(m.Wrote), "")
@@ -118,13 +163,12 @@ func TestBroadcast(t *testing.T) {
 		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
 		bob := wuser.User{Id: "bob_unique", Writer: &bobWriter}
 
-		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
-		ctx.Login(&bob, &message.Message{Command: message.Login, Data: "bob"})
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Login(&bob, &message.Message{Data: "bob"})
 		ctx.Join(&alice, &message.Message{Data: "#room"})
 		ctx.Join(&bob, &message.Message{Data: "#room"})
 		ctx.Join(&bob, &message.Message{Data: "#test"})
-
-		err := ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "#room", Data: "hello, room!"})
+		err := ctx.Broadcast(&alice, &message.Message{Receiver: "#room", Data: "hello, room!"})
 
 		expect := "GOTROOMMSG alice #room hello, room!\r\n"
 		if err != nil || string(aliceWriter.Wrote) != expect || string(bobWriter.Wrote) != expect {
@@ -139,8 +183,8 @@ func TestBroadcast(t *testing.T) {
 		m := mock.MockWriter{Wrote: make([]byte, 0)}
 		u := wuser.User{Id: "alice_unique", Writer: &m}
 
-		ctx.Login(&u, &message.Message{Command: message.Login, Data: "alice"})
-		err := ctx.Broadcast(&u, &message.Message{Command: message.Msg, Receiver: "#room", Data: "hello, room!"})
+		ctx.Login(&u, &message.Message{Data: "alice"})
+		err := ctx.Broadcast(&u, &message.Message{Receiver: "#room", Data: "hello, room!"})
 
 		if err == nil {
 			t.Fatalf("Broadcast() = %v, want error", err)
@@ -154,12 +198,11 @@ func TestBroadcast(t *testing.T) {
 		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
 		bob := wuser.User{Id: "bob_unique", Writer: &bobWriter}
 
-		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
-		ctx.Login(&bob, &message.Message{Command: message.Login, Data: "bob"})
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Login(&bob, &message.Message{Data: "bob"})
 		ctx.Join(&alice, &message.Message{Data: "#room"})
 		ctx.Join(&bob, &message.Message{Data: "#test"})
-
-		err := ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "#test", Data: "hello, room!"})
+		err := ctx.Broadcast(&alice, &message.Message{Receiver: "#test", Data: "hello, room!"})
 
 		if err == nil || string(bobWriter.Wrote) != "" {
 			t.Fatalf("Broadcast() = %v, want error; sent %#q, want %#q", err, string(bobWriter.Wrote), "")
@@ -170,9 +213,8 @@ func TestBroadcast(t *testing.T) {
 		ctx := New()
 		alice := wuser.User{Id: "alice_unique"}
 
-		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
-
-		err := ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "bob", Data: "hello, bob!"})
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		err := ctx.Broadcast(&alice, &message.Message{Receiver: "bob", Data: "hello, bob!"})
 
 		if err == nil {
 			t.Fatalf("Broadcast() = %v, want error", err)
@@ -186,10 +228,10 @@ func TestPart(t *testing.T) {
 		aliceWriter := mock.MockWriter{}
 		alice := wuser.User{Id: "alice_unique", Writer: &aliceWriter}
 
-		ctx.Login(&alice, &message.Message{Command: message.Login, Data: "alice"})
-		ctx.Join(&alice, &message.Message{Command: message.Join, Data: "#test"})
-		ctx.Part(&alice, &message.Message{Command: message.Part, Data: "#test"})
-		ctx.Broadcast(&alice, &message.Message{Command: message.Msg, Receiver: "#test", Data: "hello, test!"})
+		ctx.Login(&alice, &message.Message{Data: "alice"})
+		ctx.Join(&alice, &message.Message{Data: "#test"})
+		ctx.Part(&alice, &message.Message{Data: "#test"})
+		ctx.Broadcast(&alice, &message.Message{Receiver: "#test", Data: "hello, test!"})
 
 		if string(aliceWriter.Wrote) != "" {
 			t.Fatalf("got %#q, want %#q", string(aliceWriter.Wrote), "")
