@@ -23,21 +23,27 @@ func Parse(b []byte) (message.Message, error) {
 	}
 
 	switch ch {
-	case 'L':
-		p.buf.UnreadByte()
-		err = p.parseOneArgCmd(message.Login, p.parseWord)
-		if err != nil {
-			return message.Message{}, err
-		}
 	case 'J':
 		p.buf.UnreadByte()
 		err = p.parseOneArgCmd(message.Join, p.parseRoom)
 		if err != nil {
 			return message.Message{}, err
 		}
+	case 'L':
+		p.buf.UnreadByte()
+		err = p.parseOneArgCmd(message.Login, p.parseWord)
+		if err != nil {
+			return message.Message{}, err
+		}
 	case 'M':
 		p.buf.UnreadByte()
 		err = p.parseMessage()
+		if err != nil {
+			return message.Message{}, err
+		}
+	case 'P':
+		p.buf.UnreadByte()
+		err = p.parseOneArgCmd(message.Part, p.parseRoom)
 		if err != nil {
 			return message.Message{}, err
 		}

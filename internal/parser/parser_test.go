@@ -61,6 +61,45 @@ func TestParse(t *testing.T) {
 		})
 	})
 
+	t.Run("PART", func(t *testing.T) {
+		t.Run("should succeed", func(t *testing.T) {
+			input := []byte("PART #chatroom\r\n")
+
+			actual, err := Parse(input)
+			expect := message.Message{
+				Command:  message.Part,
+				Receiver: "",
+				Data:     "#chatroom",
+			}
+
+			if !actual.Equal(&expect) {
+				t.Fatalf("Parse(%#q) = (%v, %v), want (%v, %v)", input, actual, err, expect, nil)
+			}
+		})
+
+		t.Run("should fail when missing '#'", func(t *testing.T) {
+			input := []byte("PART chatroom\r\n")
+
+			actual, err := Parse(input)
+			expect := message.Message{}
+
+			if !actual.Equal(&expect) || err == nil {
+				t.Fatalf("Parse(%#q) = (%v, %v), want (%v, error)", input, actual, err, expect)
+			}
+		})
+
+		t.Run("shoudl fail when missing <chatroom>", func(t *testing.T) {
+			input := []byte("PART #\n")
+
+			actual, err := Parse(input)
+			expect := message.Message{}
+
+			if !actual.Equal(&expect) || err == nil {
+				t.Fatalf("Parse(%#q) = (%v, %v), want (%v, error)", input, actual, err, expect)
+			}
+		})
+	})
+
 	t.Run("MSG", func(t *testing.T) {
 		t.Run("should succeed when chatroom", func(t *testing.T) {
 			input := []byte("MSG #chatroom hello, world\r\n")

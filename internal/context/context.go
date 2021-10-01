@@ -64,6 +64,29 @@ func (ctx *Context) Join(u *wuser.User, m *message.Message) error {
 	return nil
 }
 
+// Part will remove the user from a given chatroom.
+func (ctx *Context) Part(u *wuser.User, m *message.Message) error {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
+	if !u.LoggedIn {
+		return errors.New(errUnautorized)
+	}
+
+	room := m.Data
+
+	if users, ok := ctx.chatroom[room]; ok {
+		for i := range users {
+			if users[i].Id == u.Id {
+				ctx.chatroom[room] = append(users[:i], users[i+1:]...)
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
 // Broadcast sends the given message from the given user to appropriate users.
 func (ctx *Context) Broadcast(u *wuser.User, m *message.Message) error {
 	ctx.mu.Lock()
