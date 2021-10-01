@@ -44,6 +44,31 @@ func (ctx *Context) Login(u *wuser.User, m *message.Message) error {
 	return nil
 }
 
+func (ctx *Context) Logout(u *wuser.User) error {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
+	if !u.LoggedIn {
+		return nil
+	}
+
+	for _, room := range u.Rooms {
+		if users, ok := ctx.chatroom[room]; ok {
+			for i := range users {
+				if users[i].Id == u.Id {
+					ctx.chatroom[room] = append(users[:i], users[i+1:]...)
+				}
+			}
+		}
+	}
+
+	delete(ctx.user, u.Name)
+	u.LoggedIn = false
+	u.Rooms = nil
+
+	return nil
+}
+
 // Join will insert given user into given chatroom.
 func (ctx *Context) Join(u *wuser.User, m *message.Message) error {
 	ctx.mu.Lock()
@@ -55,11 +80,8 @@ func (ctx *Context) Join(u *wuser.User, m *message.Message) error {
 
 	room := m.Data
 
-	if _, ok := ctx.chatroom[room]; !ok {
-		ctx.chatroom[room] = []*wuser.User{u}
-	} else {
-		ctx.chatroom[room] = append(ctx.chatroom[room], u)
-	}
+	ctx.chatroom[room] = append(ctx.chatroom[room], u)
+	u.Rooms = append(u.Rooms, room)
 
 	return nil
 }

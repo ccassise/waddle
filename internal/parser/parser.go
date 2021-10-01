@@ -31,7 +31,7 @@ func Parse(b []byte) (message.Message, error) {
 		}
 	case 'L':
 		p.buf.UnreadByte()
-		err = p.parseOneArgCmd(message.Login, p.parseWord)
+		err = p.parseL()
 		if err != nil {
 			return message.Message{}, err
 		}
@@ -66,15 +66,9 @@ const (
 // parseKeyword checks that the next word in the buffer matches exactly the
 // given keyword.
 func (p *parser) parseKeyword(keyword string) error {
-	for i := range keyword {
-		ch, err := p.buf.ReadByte()
-		if err != nil {
-			return err
-		}
-
-		if ch != keyword[i] {
-			return errors.New(errInvalidCommand)
-		}
+	err := p.matchNext(keyword)
+	if err != nil {
+		return err
 	}
 
 	ch, err := p.buf.ReadByte()
@@ -84,6 +78,23 @@ func (p *parser) parseKeyword(keyword string) error {
 
 	if !unicode.IsSpace(rune(ch)) {
 		return errors.New(errInvalidCommand)
+	}
+
+	return nil
+}
+
+// matchNext returns whether or not the next bytes in the buffer match exactly
+// the given string.
+func (p *parser) matchNext(word string) error {
+	for i := range word {
+		ch, err := p.buf.ReadByte()
+		if err != nil {
+			return err
+		}
+
+		if ch != word[i] {
+			return errors.New(errInvalidCommand)
+		}
 	}
 
 	return nil
@@ -195,22 +206,6 @@ func (p *parser) parseMsgText() (string, error) {
 	return result.String(), nil
 }
 
-// func (p *parser) parseCRLF() error {
-// 	const CRLF = "\r\n"
-// 	for i := range CRLF {
-// 		ch, err := p.buf.ReadByte()
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		if ch != CRLF[i] {
-// 			return errors.New(errInvalidCommand)
-// 		}
-// 	}
-
-// 	return nil
-// }
-
 // parseOneArgCmd parses a <command> <argument> . The second function argument
 // is a function that determines what strategy to use to parse the argument.
 // E.G. #<chatroom> is parsed different than <username> .
@@ -274,6 +269,61 @@ func (p *parser) parseMessage() error {
 	err = p.parseSpace()
 	if err != io.EOF {
 		return errors.New(errInvalidArgs)
+	}
+
+	return nil
+}
+
+// parseL will determine if input is LOGIN or LOGOUT and parse correctly.
+func (p *parser) parseL() error {
+	err := p.matchNext("LOG")
+	if err != nil {
+		return errors.New(errInvalidCommand)
+	}
+
+	ch, err := p.buf.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	if ch == 'O' {
+		p.buf.UnreadByte()
+		err = p.matchNext("OUT")
+		if err != nil {
+			return err
+		}
+
+		// Check next byte is not EOF.
+		_, err = p.buf.ReadByte()
+		if err != nil {
+			return err
+		}
+		p.buf.UnreadByte()
+
+		p.msg.Command = message.Logout
+	} else {
+		p.buf.UnreadByte()
+		err = p.matchNext("IN")
+		if err != nil {
+			return err
+		}
+
+		p.msg.Command = message.Login
+
+		err = p.parseSpace()
+		if err != nil {
+			return err
+		}
+
+		p.msg.Data, err = p.parseWord()
+		if err != nil {
+			return err
+		}
+	}
+
+	err = p.parseSpace()
+	if err != io.EOF {
+		return errors.New(errInvalidCommand)
 	}
 
 	return nil
