@@ -7,25 +7,25 @@ import (
 	"sync"
 
 	"github.com/ccassise/waddle/internal/message"
-	"github.com/ccassise/waddle/internal/wuser"
+	"github.com/ccassise/waddle/internal/wdluser"
 )
 
 // Context is a structure for shared data.
 type Context struct {
 	mu       sync.Mutex
-	chatroom map[string][]*wuser.User
-	user     map[string]*wuser.User
+	chatroom map[string][]*wdluser.User
+	user     map[string]*wdluser.User
 }
 
 func New() Context {
 	return Context{
-		chatroom: make(map[string][]*wuser.User),
-		user:     make(map[string]*wuser.User),
+		chatroom: make(map[string][]*wdluser.User),
+		user:     make(map[string]*wdluser.User),
 	}
 }
 
 // Login will login a user.
-func (ctx *Context) Login(u *wuser.User, m *message.Message) error {
+func (ctx *Context) Login(u *wdluser.User, m *message.Message) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
@@ -44,7 +44,7 @@ func (ctx *Context) Login(u *wuser.User, m *message.Message) error {
 	return nil
 }
 
-func (ctx *Context) Logout(u *wuser.User) error {
+func (ctx *Context) Logout(u *wdluser.User) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
@@ -70,7 +70,7 @@ func (ctx *Context) Logout(u *wuser.User) error {
 }
 
 // Join will insert given user into given chatroom.
-func (ctx *Context) Join(u *wuser.User, m *message.Message) error {
+func (ctx *Context) Join(u *wdluser.User, m *message.Message) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
@@ -87,7 +87,7 @@ func (ctx *Context) Join(u *wuser.User, m *message.Message) error {
 }
 
 // Part will remove the user from a given chatroom.
-func (ctx *Context) Part(u *wuser.User, m *message.Message) error {
+func (ctx *Context) Part(u *wdluser.User, m *message.Message) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
@@ -110,7 +110,7 @@ func (ctx *Context) Part(u *wuser.User, m *message.Message) error {
 }
 
 // Broadcast sends the given message from the given user to appropriate users.
-func (ctx *Context) Broadcast(u *wuser.User, m *message.Message) error {
+func (ctx *Context) Broadcast(u *wdluser.User, m *message.Message) error {
 	ctx.mu.Lock()
 	defer ctx.mu.Unlock()
 
@@ -126,7 +126,7 @@ func (ctx *Context) Broadcast(u *wuser.User, m *message.Message) error {
 }
 
 // broadcastRoom sends a given message from a given user to all users in a given room.
-func (ctx *Context) broadcastRoom(u *wuser.User, m *message.Message) error {
+func (ctx *Context) broadcastRoom(u *wdluser.User, m *message.Message) error {
 	users, ok := ctx.chatroom[m.Receiver]
 	if !ok {
 		return errors.New(errUserNotInRoom)
@@ -161,7 +161,7 @@ func (ctx *Context) broadcastRoom(u *wuser.User, m *message.Message) error {
 }
 
 // broadcastUser sends a given message from a given user to a specific user.
-func (ctx *Context) broadcastUser(u *wuser.User, m *message.Message) error {
+func (ctx *Context) broadcastUser(u *wdluser.User, m *message.Message) error {
 	to, ok := ctx.user[m.Receiver]
 	if !ok {
 		return errors.New(errUserNotLoggedIn)

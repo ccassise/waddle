@@ -288,22 +288,15 @@ func (p *parser) parseL() error {
 
 	if ch == 'O' {
 		p.buf.UnreadByte()
-		err = p.matchNext("OUT")
+		err = p.parseKeyword("OUT")
 		if err != nil {
 			return err
 		}
-
-		// Check next byte is not EOF.
-		_, err = p.buf.ReadByte()
-		if err != nil {
-			return err
-		}
-		p.buf.UnreadByte()
 
 		p.msg.Command = message.Logout
 	} else {
 		p.buf.UnreadByte()
-		err = p.matchNext("IN")
+		err = p.parseKeyword("IN")
 		if err != nil {
 			return err
 		}
