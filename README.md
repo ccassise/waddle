@@ -25,6 +25,11 @@ nc localhost [port]
 ```
 Where port is the same port you used on the compile and run command. You should now be able to send and receive messages to/from the server.
 
+#### Test
+```
+go test ./internal/...
+```
+
 ## Protocol
 ```
 <CRLF> indicates the bytes "\r\n".
