@@ -9,7 +9,7 @@ import (
 	"github.com/ccassise/waddle/internal/context"
 	"github.com/ccassise/waddle/internal/message"
 	"github.com/ccassise/waddle/internal/parser"
-	"github.com/ccassise/waddle/internal/wuser"
+	"github.com/ccassise/waddle/internal/wdluser"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 func handleConnection(ctx *context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	user := wuser.User{
+	user := wdluser.User{
 		Id:     conn.RemoteAddr().String(),
 		Writer: conn,
 	}
@@ -80,7 +80,7 @@ func handleConnection(ctx *context.Context, conn net.Conn) {
 	}
 }
 
-func execute(ctx *context.Context, u *wuser.User, m *message.Message) error {
+func execute(ctx *context.Context, u *wdluser.User, m *message.Message) error {
 	switch m.Command {
 	case message.Login:
 		return ctx.Login(u, m)

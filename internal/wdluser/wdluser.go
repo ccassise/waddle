@@ -1,4 +1,4 @@
-package wuser
+package wdluser
 
 import (
 	"bytes"
