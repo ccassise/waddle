@@ -42,6 +42,7 @@ MSG <username> <message-text><CRLF>                       - Send a message direc
 LOGOUT<CRLF>                                              - Log off and close connection to server.
   
 Server responses:
+
 OK<CRLF>                                                  - Indicates command was accepted.
 ERROR <reason><CRLF>                                      - Indicates an error has occured.
 GOTROOMMSG <sender> #<chatroom> <message-text><CRLF>      - When a message was sent to the room the user is in.
