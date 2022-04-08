@@ -48,3 +48,6 @@ ERROR <reason><CRLF>                                      - Indicates an error h
 GOTROOMMSG <sender> #<chatroom> <message-text><CRLF>      - When a message was sent to the room the user is in.
 GOTUSERMSG <sender> <message-text><CRLF>                  - When a message was sent directy to the user.
 ```
+
+## Known issues
+Despite what the protocol section says, the current implementation does not actually check for <CRLF> at the end of every request. Right now it only checks for a newline. The reason for this is to make it easier to test and play with using any program that sends data over a TCP socket, like `netcat`.
